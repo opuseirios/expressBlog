@@ -6,6 +6,18 @@ const flash = require('connect-flash');
 const config = require('config-lite')(__dirname);
 const routes = require('./routes');
 const pkg = require('./package');
+const mongoose =require('mongoose');
+
+mongoose.connect(config.mongodb);
+mongoose.connection.on('connected',()=>{
+  console.log('mongoose connect success')
+})
+mongoose.connection.on('fail',()=>{
+  console.log('mongoose connect fail')
+})
+mongoose.connection.on('disconnected',()=>{
+  console.log('mongoose connect fail')
+})
 
 const app = express();
 
@@ -34,6 +46,12 @@ app.use(session({
 //flash中间件
 app.use(flash());
 
+//处理表单及文件上传的中间件
+app.use(require('express-formidable')({
+  uploadDir:path.join(__dirname+'/public/img'),
+  keepExtensions:true
+}))
+
 //设置模板全局变量
 app.locals.blog = {
   title:pkg.name,
@@ -43,8 +61,8 @@ app.locals.blog = {
 //添加模板必须的三个变量
 app.use((req,res,next)=>{
   res.locals.user = req.session.user;
-  req.locals.success = req.flash('success').toString();
-  req.locals.error = req.flash('error').toString();
+  res.locals.success = req.flash('success').toString();
+  res.locals.error = req.flash('error').toString();
   next();
 })
 
