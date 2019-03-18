@@ -10,12 +10,11 @@ router.get('/',checkNotLogin,(req,res,next)=>{
 router.post('/',checkNotLogin,(req,res,next)=>{
   const name = req.fields.name;
   const password = req.fields.password;
-
   try{
-    if(name.length){
+    if(!name.length){
       throw new Error('请输入用户名')
     }
-    if(password.length){
+    if(!password.length){
       throw new Error('请输入密码')
     }
 
@@ -24,7 +23,7 @@ router.post('/',checkNotLogin,(req,res,next)=>{
     return res.redirect('back')
   }
 
-  UserModel.findOne(name).then((user)=>{
+  UserModel.findOne({name}).then((user)=>{
     if(!user){
       req.flash('error','用户不存在');
       return res.redirect('back');
