@@ -52,7 +52,7 @@ router.post('/create',checkLogin,(req,res,next)=>{
   }).catch(next)
 })
 
-router.get('/:postId',(req,res,next)=>{
+router.get('/:postId',checkLogin,(req,res,next)=>{
   const postId = req.params.postId;
   PostModel.findById({_id:postId})
     .populate({path:'author',select:['name','bio','avatar']})
@@ -66,19 +66,68 @@ router.get('/:postId',(req,res,next)=>{
           post
         })
       })
-    }).then(next)
+    }).catch(next)
 })
 
-router.get('/:postId/edit',(req,res,next)=>{
-  res.send('更新文章页')
+router.get('/:postId/edit',checkLogin,(req,res,next)=>{
+  const postId = req.params.postId;
+  PostModel.getRawPostById(postId)
+    .then(post=>{
+      res.render('edit',{
+        post
+      })
+    })
 })
 
 router.post('/:postId/edit',(req,res,next)=>{
-  res.send('更新文章')
+  const title = req.fields.title;
+  const content = req.fields.content;
+  const postId = req.params.postId;
+  const author = req.session.user._id;
+
+  try{
+    if(!title.length){
+      throw new Error('请填写标题')
+    }
+    if(!content.length){
+      throw new Error('请填写内容')
+    }
+  }catch (e){
+    req.flash('error',e.message);
+    return res.redirect('back')
+  }
+  PostModel.getRawPostById(postId).then((post)=>{
+    if(!post){
+      throw new Error('该文章不存在');
+    }
+    if(post.author._id.toString()!==author.toString()){
+      throw new Error('没有权限')
+    }
+    PostModel.findByIdAndUpdate({_id:postId},{$set:{
+        title,
+        content
+      }}).then(post=>{
+      req.flash('success','发表成功');
+      return res.redirect(`/posts/${post._id}`)
+    }).catch(next)
+  })
 })
 
-router.get('/:postId/remove',(req,res,next)=>{
-  res.send('删除文章')
+router.get('/:postId/remove',checkLogin,(req,res,next)=>{
+  const postId = req.params.postId;
+  const author = req.session.user._id;
+  PostModel.getRawPostById(postId).then(post=>{
+    if(!post){
+      throw new Error('该文章不存在')
+    }
+    if(post.author._id.toString()!==author.toString()){
+      throw new Error('没有权限')
+    }
+    PostModel.findByIdAndRemove({_id:post}).then(()=>{
+      req.flash('success','删除成功');
+      return res.redirect('/posts')
+    }).catch(next);
+  })
 })
 
 module.exports = router;
