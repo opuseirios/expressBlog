@@ -2,6 +2,7 @@ const router = require('express').Router();
 
 const checkLogin = require('../middlewares/check').checkLogin;
 const PostModel = require('../models/Post');
+const CommentModel = require('../models/Comment')
 
 router.get('/',checkLogin,(req,res,next)=>{
   const query = {};
@@ -62,9 +63,13 @@ router.get('/:postId',checkLogin,(req,res,next)=>{
       }
       PostModel.incPv(postId).then((result)=>{
         console.log(result);
-        res.render('post',{
-          post
-        })
+        CommentModel.find({postId}).populate({path:'author',select:['name','bio','avatar']}).sort({_id:-1})
+          .then((comments)=>{
+            res.render('post',{
+              post,
+              comments
+            })
+          })
       })
     }).catch(next)
 })
@@ -123,10 +128,15 @@ router.get('/:postId/remove',checkLogin,(req,res,next)=>{
     if(post.author._id.toString()!==author.toString()){
       throw new Error('没有权限')
     }
-    PostModel.findByIdAndRemove({_id:post}).then(()=>{
-      req.flash('success','删除成功');
-      return res.redirect('/posts')
-    }).catch(next);
+    PostModel.findByIdAndRemove({_id:postId}).then((res)=>{
+      console.log(res);
+      if(res.result.ok&&res.result.n>0){
+         CommentModel.delCommentsByPostId(postId).then(()=>{
+           req.flash('success','删除成功');
+           return res.redirect('/posts')
+         }).catch(next);
+      }
+    })
   })
 })
 
